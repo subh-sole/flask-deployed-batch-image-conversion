@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Batch Image Converter</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Batch Image Converter</h1>
+
+        <div class="rules-box">
+            <strong>Upload rules</strong>
+            <ul>
+                <li>Choose a source format and target format.</li>
+                <li>Only files matching the selected source format are allowed.</li>
+                <li>You may upload up to 10 files at a time.</li>
+                <li>Each file must be under 20 MB.</li>
+                <li>Images are converted in batch and downloaded together as a ZIP.</li>
+            </ul>
+        </div>
+
+        <form id="uploadForm" enctype="multipart/form-data">
+            <label class="conversion-label" for="source_format">Source format</label>
+            <select id="source_format" name="source_format">
+                <option value="TIFF">TIFF</option>
+                <option value="JPEG">JPEG</option>
+                <option value="PNG">PNG</option>
+                <option value="BMP">BMP</option>
+                <option value="GIF">GIF</option>
+                <option value="WEBP">WEBP</option>
+            </select>
+
+            <label class="conversion-label" for="target_format">Target format</label>
+            <select id="target_format" name="target_format">
+                <option value="JPEG">JPEG</option>
+                <option value="PNG">PNG</option>
+                <option value="BMP">BMP</option>
+                <option value="GIF">GIF</option>
+                <option value="WEBP">WEBP</option>
+                <option value="TIFF">TIFF</option>
+            </select>
+
+            <div id="fileCount" class="file-count">No files selected</div>
+            <input id="fileInput" type="file" name="files" multiple accept=".tif,.tiff">
+
+            <div id="messageBox" aria-live="polite"></div>
+
+            <input type="submit" value="Convert Files">
+        </form>
+
+        <a class="download-link" href="{{ url_for('download') }}">Download Converted ZIP</a>
+
+        <form class="clear-form" id="clearForm" method="POST" action="{{ url_for('clear_uploads') }}">
+            <button type="submit">Clear Files</button>
+        </form>
+
+        <h2>Uploaded files</h2>
+        {% if uploaded_files %}
+            <ul>
+                {% for file in uploaded_files %}
+                    <li>{{ file }}</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>No files currently uploaded.</p>
+        {% endif %}
+    </div>
+
+    <script>
+        const sourceFormat = document.getElementById('source_format');
+        const targetFormat = document.getElementById('target_format');
+        const fileInput = document.getElementById('fileInput');
+        const fileCount = document.getElementById('fileCount');
+        const uploadForm = document.getElementById('uploadForm');
+        const clearForm = document.getElementById('clearForm');
+        const messageBox = document.getElementById('messageBox');
+
+        const acceptedByFormat = {
+            TIFF: ['.tif', '.tiff'],
+            JPEG: ['.jpg', '.jpeg'],
+            PNG: ['.png'],
+            BMP: ['.bmp'],
+            GIF: ['.gif'],
+            WEBP: ['.webp']
+        };
+
+        function setFileAccept() {
+            const allowed = acceptedByFormat[sourceFormat.value] || ['*'];
+            fileInput.accept = allowed.join(',');
+        }
+
+        function updateFileCount() {
+            const files = fileInput.files;
+            fileCount.textContent = files.length ? `${files.length} file(s) selected` : 'No files selected';
+        }
+
+        function showMessage(text, isError = false) {
+            messageBox.textContent = text;
+            messageBox.style.color = isError ? '#b42318' : '#1a7f37';
+            messageBox.style.margin = '12px 0';
+            messageBox.style.fontWeight = '600';
+        }
+
+        sourceFormat.addEventListener('change', setFileAccept);
+        fileInput.addEventListener('change', updateFileCount);
+
+        uploadForm.addEventListener('submit', async function (event) {
+            event.preventDefault();
+
+            const formData = new FormData(uploadForm);
+            const response = await fetch('/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json().catch(() => ({ status: 'error', message: 'Unexpected server response.' }));
+
+            if (response.ok) {
+                showMessage(result.message || 'Success!');
+                uploadForm.reset();
+                updateFileCount();
+                setFileAccept();
+                setTimeout(() => window.location.reload(), 800);
+            } else {
+                showMessage(result.message || 'Upload failed.', true);
+            }
+        });
+
+        clearForm.addEventListener('submit', async function (event) {
+            event.preventDefault();
+
+            const response = await fetch('/clear_uploads', {
+                method: 'POST'
+            });
+
+            const result = await response.json().catch(() => ({ status: 'error', message: 'Unable to clear files.' }));
+
+            if (response.ok) {
+                showMessage(result.message || 'Files cleared.');
+                setTimeout(() => window.location.reload(), 500);
+            } else {
+                showMessage(result.message || 'Clear failed.', true);
+            }
+        });
+
+        setFileAccept();
+        updateFileCount();
+    </script>
+</body>
+</html>
