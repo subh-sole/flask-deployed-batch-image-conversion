@@ -66,7 +66,7 @@ cd "D:\conversionsit"
 ### 2. Install dependencies
 
 ```powershell
-python -m pip install flask pillow
+python -m pip install -r requirements.txt
 ```
 
 ### 3. Start the app
@@ -116,85 +116,110 @@ This is a lightweight safeguard and is not a full antivirus scanner, but it help
 
 ---
 
-## AWS Elastic Beanstalk CLI setup
+## Deploy to AWS Elastic Beanstalk
 
-To access and use the AWS Elastic Beanstalk Command Line Interface (EB CLI), use the following steps.
+This workflow runs from PowerShell on your Windows computer. You do not need to open a terminal in the AWS console: the AWS CLI and EB CLI use your local credentials to communicate with AWS, package the project, and deploy it. The project includes a `Procfile` that starts Flask with Gunicorn and a `requirements.txt` that tells Elastic Beanstalk which Python packages to install.
 
-### 1. Install Python and pip
+### Prerequisites
 
-Make sure Python is installed first.
+- An AWS account with permission to create and manage Elastic Beanstalk environments and their supporting resources. AWS may charge for those resources.
+- Python and pip installed on your computer.
+- The AWS CLI v2 and Elastic Beanstalk CLI (EB CLI) installed on your computer.
+
+### 1. Install the AWS CLI
+
+Download and run the AWS CLI v2 installer for Windows from the [official AWS instructions](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html). Open a new PowerShell window and verify it is available:
 
 ```powershell
-python --version
+aws --version
 ```
 
-### 2. Install the EB CLI
+### 2. Configure AWS access
 
-```powershell
-pip install awsebcli --upgrade --user
-```
-
-### 3. Configure AWS credentials
+Use the credentials or sign-in method provided by your AWS administrator. For an access key, configure the AWS CLI and enter the key, secret, and default AWS region when prompted:
 
 ```powershell
 aws configure
+aws sts get-caller-identity
 ```
 
-You will be asked for:
-- AWS Access Key ID
-- AWS Secret Access Key
-- default region
-- output format
+Never put access keys in the project, README, or GitHub. If your organization uses AWS IAM Identity Center (SSO), use the sign-in flow provided by your administrator instead of creating an access key.
 
-These credentials come from your AWS IAM account in the AWS Console.
+### 3. Install the EB CLI
 
-### 4. Verify installation
+Install EB CLI with Python's package installer:
+
+```powershell
+python -m pip install --user --upgrade awsebcli
+```
+
+Verify it:
 
 ```powershell
 eb --version
 ```
 
-This should print the installed EB CLI version.
+If PowerShell says `eb` is not recognized, add Python's user `Scripts` directory to your Windows user `Path`, then open a new PowerShell window and try `eb --version` again. You can print the directory with:
 
----
+```powershell
+$PythonUserBase = python -m site --user-base
+Join-Path $PythonUserBase "Scripts"
+```
 
-## AWS deployment commands
+### 4. Initialize and create the Elastic Beanstalk environment
 
-Run the following commands from the project root directory.
+Go to the project root on your computer:
 
-### Initialize the app
+```powershell
+cd "D:\conversionsit"
+```
+
+Initialize the EB CLI configuration for this project:
 
 ```powershell
 eb init
 ```
 
-This will prompt you to choose a region and select or create an application.
-
-### Create an environment
+Follow the prompts to choose the AWS region, create or select an Elastic Beanstalk application, and select a Python platform. This creates local EB CLI configuration for the project. Then create an environment (choose an environment name when prompted):
 
 ```powershell
 eb create
+eb open
 ```
 
-### Deploy the app
+`eb create` creates the AWS environment and performs the first deployment. The EB CLI uploads the application from your local project folder; pushing code to GitHub does not itself deploy it. Make sure `app.py`, `Procfile`, `requirements.txt`, `templates/`, and `static/` are in the project.
+
+### 5. Deploy updates from your computer
+
+After changing the app, run this from the same project folder:
 
 ```powershell
 eb deploy
 ```
 
-### Open the app in the browser
+To open the deployed app again:
 
 ```powershell
 eb open
 ```
 
-### Terminate the environment when no longer needed
+Useful commands for checking a deployment:
+
+```powershell
+eb status
+eb health
+eb logs
+```
+
+### Remove the environment
+
+When you no longer need the deployment, terminate the environment to avoid ongoing AWS charges:
 
 ```powershell
 eb terminate
 ```
 
-> Remember: EB CLI commands should be run in the root folder of the app where the Elastic Beanstalk configuration files are located.
+Follow the CLI prompts carefully; terminating the environment removes its running application resources.
 
 ---
 
@@ -204,10 +229,11 @@ Before uploading to GitHub, keep only the useful project files and ignore the te
 
 ### Recommended keep list
 - app.py
+- Procfile
+- requirements.txt
 - templates/
 - static/
 - README.md
-- requirements.txt (if added)
 - .gitignore
 
 ### Recommended ignore list
@@ -224,21 +250,23 @@ Before uploading to GitHub, keep only the useful project files and ignore the te
 
 ```powershell
 cd "D:\conversionsit"
-python -m pip install flask pillow
+python -m pip install -r requirements.txt
 python app.py
 ```
 
-For AWS deployment:
+For the first AWS deployment, install AWS CLI v2 and EB CLI, configure AWS access, then run these commands locally from the project folder:
 
 ```powershell
-pip install awsebcli --upgrade --user
+python -m pip install awsebcli --upgrade --user
 aws configure
+aws sts get-caller-identity
 eb --version
 eb init
 eb create
-eb deploy
 eb open
 ```
+
+For each later deployment, use `eb deploy`.
 
 ---
 
